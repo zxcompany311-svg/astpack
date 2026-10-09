@@ -37,6 +37,11 @@ TOOLS = [
                     "type": "string",
                     "enum": ["focus", "stubs", "signatures"],
                     "description": "Pruning mode. Default is 'focus' if focus targets provided, else 'stubs'."
+                },
+                "depth": {
+                    "type": "integer",
+                    "default": 1,
+                    "description": "Transitive call graph traversal depth for dependency resolution (default: 1)."
                 }
             },
             "required": ["code", "filepath"]
@@ -56,6 +61,11 @@ TOOLS = [
                     "type": "array",
                     "items": {"type": "string"},
                     "description": "Optional target symbols to preserve in full."
+                },
+                "depth": {
+                    "type": "integer",
+                    "default": 1,
+                    "description": "Transitive call graph traversal depth for cross-file dependency closure (default: 1)."
                 },
                 "mode": {
                     "type": "string",
@@ -125,7 +135,8 @@ def handle_request(req: Dict[str, Any]) -> Dict[str, Any]:
             filepath = args.get("filepath", "code.py")
             focus = args.get("focus")
             mode = args.get("mode") or ("focus" if focus else "stubs")
-            pruned, stats = prune_code(code, filepath=filepath, focus=focus, mode=mode)
+            depth = int(args.get("depth", 1))
+            pruned, stats = prune_code(code, filepath=filepath, focus=focus, mode=mode, depth=depth)
             content = (
                 f"<!-- AstPack Pruned Context (Tokens: {stats['pruned_tokens']:,} / Saved: {stats['reduction_pct']}%) -->\n"
                 f"{pruned}"
@@ -142,7 +153,8 @@ def handle_request(req: Dict[str, Any]) -> Dict[str, Any]:
             target = args.get("directory_path", ".")
             focus = args.get("focus")
             mode = args.get("mode") or ("focus" if focus else "stubs")
-            pack_res = pack_repository(target_dir=target, focus_targets=focus, prune_mode=mode)
+            depth = int(args.get("depth", 1))
+            pack_res = pack_repository(target_dir=target, focus_targets=focus, prune_mode=mode, depth=depth)
             return {
                 "jsonrpc": "2.0",
                 "id": req_id,

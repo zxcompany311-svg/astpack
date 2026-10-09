@@ -1,7 +1,7 @@
 """
 JavaScript and TypeScript Syntax Analyzer and Pruner.
 Handles .js, .jsx, .ts, .tsx files, preserving type signatures and interfaces
-while stubbing function implementations.
+while stubbing function implementations and resolving call dependencies.
 """
 
 import re
@@ -34,24 +34,25 @@ class JavaScriptAnalyzer(BaseAnalyzer):
         analysis.imports = [m.group(0).strip() for m in import_pattern.finditer(code)]
 
         # Extract functions / interfaces / classes
-        # Matches: function name(...), const name = (...), class Name, interface Name, type Name
         decl_pattern = re.compile(
             r'^\s*(export\s+)?(default\s+)?(async\s+)?'
             r'(function\s+([a-zA-Z0-9_$]+)|'
             r'class\s+([a-zA-Z0-9_$]+)|'
             r'interface\s+([a-zA-Z0-9_$]+)|'
             r'type\s+([a-zA-Z0-9_$]+)\s*=|'
-            r'const\s+([a-zA-Z0-9_$]+)\s*=\s*(?:async\s*)?\()',
+            r'(?:const|let)\s+([a-zA-Z0-9_$]+)\s*=\s*(?:async\s*)?\()',
             re.MULTILINE,
         )
 
+        call_pattern = re.compile(r'\b([a-zA-Z0-9_$]+)\s*\(')
+
         for match in decl_pattern.finditer(code):
             name = (
-                match.group(5)  # function
-                or match.group(6)  # class
-                or match.group(7)  # interface
-                or match.group(8)  # type
-                or match.group(9)  # const func
+                match.group(5)
+                or match.group(6)
+                or match.group(7)
+                or match.group(8)
+                or match.group(9)
             )
             if not name:
                 continue
@@ -66,12 +67,23 @@ class JavaScriptAnalyzer(BaseAnalyzer):
             else:
                 kind = SymbolKind.FUNCTION
 
+            # Extract dependencies (called identifiers) within a reasonable window or body
+            start_pos = match.start()
+            sample_body = code[start_pos : start_pos + 1500]
+            deps = {
+                c.group(1)
+                for c in call_pattern.finditer(sample_body)
+                if c.group(1) != name and c.group(1) not in {"function", "require", "import", "if", "for", "while", "catch"}
+            }
+
             analysis.symbols.append(
                 SymbolNode(
                     name=name,
                     kind=kind,
                     signature=full_match,
                     is_exported=bool(match.group(1)),
+                    dependencies=deps,
+                    filepath=filepath,
                 )
             )
 
@@ -85,21 +97,23 @@ class JavaScriptAnalyzer(BaseAnalyzer):
         mode: str = "focus",
     ) -> str:
         """
-        Prune function bodies into '{ /* ... implementation elided ... */ }'.
-        Retains full implementation for focus_targets if in focus mode.
+        Prune function bodies into stubs:
+        - 'signatures': Minimal empty braces '{}' without comments.
+        - 'stubs': Standard '{ /* ... implementation elided ... */ }'.
+        - 'focus': Keeps full implementation for primary targets, informative stubs
+                   for dependencies, and minimal '{}' for unrelated code.
         """
         code = analysis.raw_code
         if not code:
             return ""
 
-        targets = set(focus_targets or [])
+        primaries = set(focus_targets or [])
+        deps = set(dependency_targets or [])
 
-        # Parse character by character to reliably balance curly braces
         result = []
         i = 0
         n = len(code)
 
-        # Regex to locate function starts
         func_start_re = re.compile(
             r'(?:(?:export\s+)?(?:default\s+)?(?:async\s+)?function\s+([a-zA-Z0-9_$]+)[^{]*\{|'
             r'(?:export\s+)?(?:const|let)\s+([a-zA-Z0-9_$]+)\s*=\s*(?:async\s*)?\([^)]*\)[^{]*=>\s*\{|'
@@ -116,10 +130,8 @@ class JavaScriptAnalyzer(BaseAnalyzer):
             brace_open_idx = match.end() - 1
             func_name = match.group(1) or match.group(2) or match.group(3)
 
-            # Append text before this function
             result.append(code[i:start_idx])
 
-            # Find matching closing brace
             brace_count = 1
             curr = brace_open_idx + 1
             in_single_quote = False
@@ -165,14 +177,21 @@ class JavaScriptAnalyzer(BaseAnalyzer):
 
                 curr += 1
 
-            # Check if this function is focused
-            is_focused = bool(func_name and func_name in targets)
-            if mode == "focus" and is_focused:
-                # Keep full body
-                result.append(code[start_idx:curr])
-            else:
-                # Stub out body
-                header = code[start_idx:brace_open_idx]
+            is_primary = bool(func_name and func_name in primaries)
+            is_dep = bool(func_name and func_name in deps)
+
+            header = code[start_idx:brace_open_idx]
+
+            if mode == "focus":
+                if is_primary:
+                    result.append(code[start_idx:curr])
+                elif is_dep or not primaries:
+                    result.append(f"{header}{{ /* ... dependency stub ... */ }}")
+                else:
+                    result.append(f"{header}{{}}")
+            elif mode == "signatures":
+                result.append(f"{header}{{}}")
+            else:  # mode == "stubs"
                 result.append(f"{header}{{ /* ... implementation elided ... */ }}")
 
             i = curr

@@ -57,3 +57,29 @@ def add(a: int, b: int) -> int:
     assert "def add(a: int, b: int) -> int:" in content
     assert "..." in content
     assert "res = a + b" not in content
+
+
+def test_mcp_depth_parameter():
+    code = """
+def step_two(): return 2
+def step_one(): return step_two()
+"""
+    req = {
+        "jsonrpc": "2.0",
+        "id": 4,
+        "method": "tools/call",
+        "params": {
+            "name": "astpack_prune",
+            "arguments": {
+                "code": code,
+                "filepath": "pipeline.py",
+                "focus": ["step_one"],
+                "mode": "focus",
+                "depth": 1
+            }
+        }
+    }
+    res = handle_request(req)
+    assert res["id"] == 4
+    content = res["result"]["content"][0]["text"]
+    assert "return step_two()" in content

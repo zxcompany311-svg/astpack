@@ -53,8 +53,18 @@ class PythonAnalyzer(BaseAnalyzer):
         )
 
         for node in tree.body:
-            if isinstance(node, (ast.Import, ast.ImportFrom)):
+            if isinstance(node, ast.Import):
                 analysis.imports.append(ast.unparse(node))
+                for alias in node.names:
+                    local_name = alias.asname or alias.name
+                    analysis.import_map[local_name] = alias.name
+            elif isinstance(node, ast.ImportFrom):
+                analysis.imports.append(ast.unparse(node))
+                module_name = node.module or ""
+                for alias in node.names:
+                    local_name = alias.asname or alias.name
+                    qual = f"{module_name}.{alias.name}" if module_name else alias.name
+                    analysis.import_map[local_name] = qual
             elif isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
                 sym = self._extract_function_symbol(node)
                 analysis.symbols.append(sym)

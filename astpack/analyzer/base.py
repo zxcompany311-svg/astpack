@@ -40,6 +40,7 @@ class FileAnalysis:
     filepath: str
     language: str
     imports: List[str] = field(default_factory=list)
+    import_map: Dict[str, str] = field(default_factory=dict)
     symbols: List[SymbolNode] = field(default_factory=list)
     raw_code: str = ""
     module_docstring: Optional[str] = None

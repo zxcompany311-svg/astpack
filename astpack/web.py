@@ -152,6 +152,12 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
             <select id="mode-select">
                 <option value="focus">Focus Mode</option>
                 <option value="stubs">All Stubs</option>
+                <option value="signatures">Signatures Only</option>
+            </select>
+            <select id="depth-select" title="Dependency call depth">
+                <option value="1">Depth 1</option>
+                <option value="2">Depth 2</option>
+                <option value="0">Depth 0 (Target Only)</option>
             </select>
             <button onclick="triggerPrune()">Prune AST</button>
         </div>
@@ -205,6 +211,7 @@ def process_order(items: list, card_token: str, gateway: PaymentGateway) -> dict
             const code = document.getElementById('code-input').value;
             const focus = document.getElementById('focus-input').value.trim();
             const mode = document.getElementById('mode-select').value;
+            const depth = parseInt(document.getElementById('depth-select').value, 10);
 
             try {
                 const res = await fetch('/api/prune', {
@@ -214,7 +221,8 @@ def process_order(items: list, card_token: str, gateway: PaymentGateway) -> dict
                         code: code,
                         filepath: 'example.py',
                         focus: focus ? [focus] : [],
-                        mode: mode
+                        mode: mode,
+                        depth: depth
                     })
                 });
                 const data = await res.json();
@@ -269,8 +277,9 @@ class PlaygroundHandler(http.server.SimpleHTTPRequestHandler):
                 filepath = data.get("filepath", "example.py")
                 focus = data.get("focus") or []
                 mode = data.get("mode", "focus")
+                depth = int(data.get("depth", 1))
 
-                pruned, stats = prune_code(code, filepath=filepath, focus=focus, mode=mode)
+                pruned, stats = prune_code(code, filepath=filepath, focus=focus, mode=mode, depth=depth)
 
                 res = json.dumps({"pruned": pruned, "stats": stats}).encode("utf-8")
                 self.send_response(200)
