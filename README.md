@@ -6,9 +6,9 @@
 
 <p align="center">
   <a href="https://pypi.org/project/astpack/"><img src="https://img.shields.io/badge/pypi-v0.1.0-blue.svg" alt="PyPI version"></a>
-  <a href="https://github.com/astpack/astpack/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-green.svg" alt="License: MIT"></a>
+  <a href="https://github.com/zxcompany311-svg/astpack/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-green.svg" alt="License: MIT"></a>
   <a href="https://www.python.org/downloads/"><img src="https://img.shields.io/badge/python-3.9+-blue.svg" alt="Python 3.9+"></a>
-  <a href="https://github.com/astpack/astpack/stargazers"><img src="https://img.shields.io/badge/PRs-welcome-brightgreen.svg" alt="PRs Welcome"></a>
+  <a href="https://github.com/zxcompany311-svg/astpack/stargazers"><img src="https://img.shields.io/badge/PRs-welcome-brightgreen.svg" alt="PRs Welcome"></a>
 </p>
 
 ---
@@ -184,7 +184,7 @@ Global Options:
 We welcome contributions! Please check out [CONTRIBUTING.md](CONTRIBUTING.md) for details on setting up your local environment and running tests.
 
 ```bash
-git clone https://github.com/astpack/astpack.git
+git clone https://github.com/zxcompany311-svg/astpack.git
 cd astpack
 uv run --with pytest pytest
 ```

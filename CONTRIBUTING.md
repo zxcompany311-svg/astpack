@@ -8,7 +8,7 @@ AstPack uses [`uv`](https://github.com/astral-sh/uv) or standard `pip` for devel
 
 1. **Clone the repository**:
    ```bash
-   git clone https://github.com/astpack/astpack.git
+   git clone https://github.com/zxcompany311-svg/astpack.git
    cd astpack
    ```
 

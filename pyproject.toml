@@ -55,6 +55,6 @@ dev = [
 astpack = "astpack.cli:main"
 
 [project.urls]
-Homepage = "https://github.com/astpack/astpack"
-Repository = "https://github.com/astpack/astpack"
-Issues = "https://github.com/astpack/astpack/issues"
+Homepage = "https://github.com/zxcompany311-svg/astpack"
+Repository = "https://github.com/zxcompany311-svg/astpack"
+Issues = "https://github.com/zxcompany311-svg/astpack/issues"
