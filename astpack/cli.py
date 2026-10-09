@@ -104,6 +104,11 @@ def cmd_mcp(args):
     run_mcp_server()
 
 
+def cmd_serve(args):
+    from astpack.web import start_playground
+    start_playground(port=args.port, open_browser=not args.no_browser)
+
+
 def _print_stats_table(title: str, stats: dict, is_pack: bool = False):
     if HAS_RICH:
         table = Table(title=title, title_style="bold magenta", border_style="dim")
@@ -159,6 +164,11 @@ def main():
     # mcp command
     p_mcp = subparsers.add_parser("mcp", help="Run Model Context Protocol (MCP) server over stdio")
 
+    # serve command
+    p_serve = subparsers.add_parser("serve", help="Launch interactive Web Playground in browser")
+    p_serve.add_argument("-p", "--port", type=int, default=7860, help="Port to serve on (default: 7860)")
+    p_serve.add_argument("--no-browser", action="store_true", help="Do not automatically open browser")
+
     args = parser.parse_args()
 
     if not args.command:
@@ -174,6 +184,8 @@ def main():
         cmd_stats(args)
     elif args.command == "mcp":
         cmd_mcp(args)
+    elif args.command == "serve":
+        cmd_serve(args)
 
 
 if __name__ == "__main__":
