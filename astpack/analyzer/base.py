@@ -27,6 +27,7 @@ class SymbolNode:
     children: List["SymbolNode"] = field(default_factory=list)
     parent_name: Optional[str] = None
     is_exported: bool = True
+    filepath: Optional[str] = None
 
     def qualified_name(self) -> str:
         if self.parent_name:
@@ -76,12 +77,13 @@ class BaseAnalyzer:
         self,
         analysis: FileAnalysis,
         focus_targets: Optional[Set[str]] = None,
+        dependency_targets: Optional[Set[str]] = None,
         mode: str = "focus",
     ) -> str:
         """
         Prunes code based on strategy:
-        - 'focus': Keeps full implementation of focus_targets and stubs everything else.
-        - 'stubs': Stubs all function/method bodies into '...' or docstrings.
-        - 'signatures': Keeps only class & function headers and type definitions.
+        - 'focus': Keeps full implementation of focus_targets, stubs dependencies, strips unrelated.
+        - 'stubs': Stubs all function/method bodies into docstrings + '...'.
+        - 'signatures': Keeps only class & function headers and '...' (docstrings stripped).
         """
         raise NotImplementedError

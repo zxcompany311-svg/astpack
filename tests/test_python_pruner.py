@@ -29,21 +29,43 @@ def test_prune_all_stubs():
 
     # Ellipsis must be present in stubbed bodies
     assert "..." in pruned
+    # Docstrings should be retained in stubs mode
+    assert "Calculate shipping cost based on weight" in pruned
     assert stats["reduction_pct"] > 30.0
 
 
-def test_prune_focus_mode():
+def test_prune_signatures_mode():
     sample_file = Path(__file__).parent / "sample_code" / "ecommerce_app.py"
-    pruned, stats = prune_file(str(sample_file), focus=["process_order"], mode="focus")
+    pruned, stats = prune_file(str(sample_file), mode="signatures")
+
+    tree = ast.parse(pruned)
+    assert tree is not None
+
+    # Signatures mode MUST strip docstrings
+    assert "Calculate shipping cost based on weight" not in pruned
+    assert "Charge credit card via external API" not in pruned
+    assert "def calculate_shipping" in pruned
+    assert "..." in pruned
+    # Signatures mode should save more tokens than stubs mode
+    assert stats["reduction_pct"] > 40.0
+
+
+def test_prune_focus_mode_with_closure():
+    sample_file = Path(__file__).parent / "sample_code" / "ecommerce_app.py"
+    pruned, stats = prune_file(str(sample_file), focus=["process_order"], mode="focus", depth=1)
 
     # Syntactically valid
     tree = ast.parse(pruned)
     assert tree is not None
 
-    # Focused function body should be preserved intact
+    # Focused primary target function body should be preserved intact
     assert "grand_total = total + shipping" in pruned
     assert "ORD-99881" in pruned
 
-    # Unfocused function body should be elided
+    # Immediate dependency (calculate_shipping) should have body stubbed but docstring preserved
     assert "base_rate = 5.0" not in pruned
+    assert "Calculate shipping cost based on weight" in pruned
+
+    # Unrelated function (PaymentGateway.refund) should have docstring stripped in focus mode
+    assert "Issue refund to customer" not in pruned
     assert stats["saved_tokens"] > 0

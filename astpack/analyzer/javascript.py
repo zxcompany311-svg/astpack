@@ -81,6 +81,7 @@ class JavaScriptAnalyzer(BaseAnalyzer):
         self,
         analysis: FileAnalysis,
         focus_targets: Optional[Set[str]] = None,
+        dependency_targets: Optional[Set[str]] = None,
         mode: str = "focus",
     ) -> str:
         """

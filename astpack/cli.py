@@ -11,6 +11,23 @@ from astpack import __version__
 from astpack.pruner import prune_file, prune_code
 from astpack.packer import pack_repository
 
+# Configure Windows terminal encoding safety
+if sys.platform == "win32":
+    try:
+        if hasattr(sys.stdout, "reconfigure"):
+            sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
+
+
+def _safe_check() -> str:
+    try:
+        "✓".encode(sys.stdout.encoding or "utf-8")
+        return "✓"
+    except Exception:
+        return "[OK]"
+
+
 # Optional rich support
 try:
     from rich.console import Console
@@ -43,21 +60,35 @@ def cmd_prune(args):
     filepath = args.file
     focus_targets = args.focus.split(",") if args.focus else None
     mode = args.mode or "focus"
+    depth = getattr(args, "depth", 1)
 
     if filepath == "-":
         content = sys.stdin.read()
-        pruned, stats = prune_code(content, filepath="snippet.py", focus=focus_targets, mode=mode)
+        pruned, stats = prune_code(
+            content,
+            filepath="snippet.py",
+            focus=focus_targets,
+            mode=mode,
+            depth=depth,
+        )
     else:
         if not os.path.exists(filepath):
             print(f"Error: file not found: {filepath}", file=sys.stderr)
             sys.exit(1)
-        pruned, stats = prune_file(filepath, focus=focus_targets, mode=mode)
+        pruned, stats = prune_file(
+            filepath,
+            focus=focus_targets,
+            mode=mode,
+            depth=depth,
+        )
 
     if args.output:
         with open(args.output, "w", encoding="utf-8") as f:
             f.write(pruned)
         if HAS_RICH and not args.quiet:
-            console.print(f"[green]✓ Pruned content saved to:[/green] [bold]{args.output}[/bold]")
+            console.print(f"[green]{_safe_check()} Pruned content saved to:[/green] [bold]{args.output}[/bold]")
+        elif not args.quiet:
+            print(f"{_safe_check()} Pruned content saved to: {args.output}")
     else:
         print(pruned)
 
@@ -70,6 +101,7 @@ def cmd_pack(args):
     out_file = args.output or "astpack-context.md"
     focus_targets = args.focus.split(",") if args.focus else None
     mode = args.mode or ("focus" if args.focus else "stubs")
+    depth = getattr(args, "depth", 1)
 
     if not args.quiet and HAS_RICH:
         console.print(f"[bold green]Packing repository:[/bold green] {target} (Mode: {mode})")
@@ -79,6 +111,7 @@ def cmd_pack(args):
         output_path=out_file,
         focus_targets=focus_targets,
         prune_mode=mode,
+        depth=depth,
     )
 
     if not args.quiet:
@@ -146,6 +179,7 @@ def main():
     p_pack.add_argument("path", nargs="?", default=".", help="Directory to pack (default: .)")
     p_pack.add_argument("-o", "--output", help="Output file path (default: astpack-context.md)")
     p_pack.add_argument("-f", "--focus", help="Comma-separated target symbols to preserve in full")
+    p_pack.add_argument("-d", "--depth", type=int, default=1, help="Call graph closure traversal depth (default: 1)")
     p_pack.add_argument("-m", "--mode", choices=["focus", "stubs", "signatures"], default=None, help="Pruning mode")
     p_pack.add_argument("-q", "--quiet", action="store_true", help="Suppress progress output")
 
@@ -154,6 +188,7 @@ def main():
     p_prune.add_argument("file", help="File to prune (use '-' for stdin)")
     p_prune.add_argument("-o", "--output", help="Output file path (default: stdout)")
     p_prune.add_argument("-f", "--focus", help="Comma-separated target symbols to preserve in full")
+    p_prune.add_argument("-d", "--depth", type=int, default=1, help="Call graph closure traversal depth (default: 1)")
     p_prune.add_argument("-m", "--mode", choices=["focus", "stubs", "signatures"], default="focus", help="Pruning mode")
     p_prune.add_argument("-q", "--quiet", action="store_true", help="Suppress stats output")
 

@@ -38,6 +38,7 @@ class PythonAnalyzer(BaseAnalyzer):
         return filepath.endswith(".py") or filepath.endswith(".pyi")
 
     def parse(self, code: str, filepath: str) -> FileAnalysis:
+        self.current_filepath = filepath
         try:
             tree = ast.parse(code, filename=filepath)
         except SyntaxError:
@@ -114,6 +115,7 @@ class PythonAnalyzer(BaseAnalyzer):
             end_line=node.end_lineno or node.lineno,
             dependencies=deps,
             parent_name=parent_name,
+            filepath=self.current_filepath,
         )
 
     def _extract_class_symbol(self, node: ast.ClassDef) -> SymbolNode:
@@ -163,12 +165,15 @@ class PythonAnalyzer(BaseAnalyzer):
         self,
         analysis: FileAnalysis,
         focus_targets: Optional[Set[str]] = None,
+        dependency_targets: Optional[Set[str]] = None,
         mode: str = "focus",
     ) -> str:
         """
         Prunes the Python code into semantic stubs.
-        Only primary targets in focus_targets retain their full bodies.
-        Auxiliary / dependent functions have their bodies stubbed into '...'.
+        - 'signatures': Strips implementations and docstrings for extreme token reduction.
+        - 'stubs': Stubs implementations into '...' while preserving docstrings.
+        - 'focus': Keeps full implementation of primary focus_targets, preserves stubs for
+                   dependency_targets, and strips docstrings from unrelated code.
         """
         if not analysis.raw_code:
             return ""
@@ -179,10 +184,12 @@ class PythonAnalyzer(BaseAnalyzer):
             return analysis.raw_code
 
         primary_targets = set(focus_targets or [])
+        dep_targets = set(dependency_targets or [])
 
         class PruneTransformer(ast.NodeTransformer):
-            def __init__(self, targets: Set[str], prune_mode: str):
-                self.targets = targets
+            def __init__(self, primaries: Set[str], deps: Set[str], prune_mode: str):
+                self.primaries = primaries
+                self.deps = deps
                 self.mode = prune_mode
                 self.current_class: Optional[str] = None
 
@@ -212,21 +219,36 @@ class PythonAnalyzer(BaseAnalyzer):
             def _transform_func(self, node: ast.FunctionDef | ast.AsyncFunctionDef):
                 qual_name = f"{self.current_class}.{node.name}" if self.current_class else node.name
                 
-                # Check if this exact function is a primary target
-                is_primary_target = (
-                    qual_name in self.targets
-                    or node.name in self.targets
-                    or (self.current_class and self.current_class in self.targets)
+                is_primary = (
+                    qual_name in self.primaries
+                    or node.name in self.primaries
+                    or (self.current_class and self.current_class in self.primaries)
+                )
+                is_dependency = (
+                    qual_name in self.deps
+                    or node.name in self.deps
                 )
 
-                if self.mode == "focus" and is_primary_target:
-                    # Keep full body intact for primary targets
+                if self.mode == "focus" and is_primary:
+                    # Keep full implementation for primary focus targets
                     return node
 
-                # Otherwise stub implementation: keep docstring if present, then Ellipsis
+                # Determine whether to retain docstrings:
+                # In 'signatures' mode: never keep docstrings
+                # In 'stubs' mode: always keep docstrings
+                # In 'focus' mode: keep docstrings only for dependencies; strip for unrelated code
+                if self.mode == "signatures":
+                    keep_doc = False
+                elif self.mode == "stubs":
+                    keep_doc = True
+                elif self.mode == "focus":
+                    keep_doc = is_dependency or not self.primaries
+                else:
+                    keep_doc = True
+
                 new_body = []
                 doc = ast.get_docstring(node, clean=False)
-                if doc:
+                if keep_doc and doc:
                     doc_expr = ast.Expr(value=ast.Constant(value=doc))
                     ast.copy_location(doc_expr, node)
                     new_body.append(doc_expr)
@@ -239,7 +261,11 @@ class PythonAnalyzer(BaseAnalyzer):
                 ast.fix_missing_locations(node)
                 return node
 
-        transformer = PruneTransformer(targets=primary_targets, prune_mode=mode)
+        transformer = PruneTransformer(
+            primaries=primary_targets,
+            deps=dep_targets,
+            prune_mode=mode,
+        )
         pruned_tree = transformer.visit(tree)
         ast.fix_missing_locations(pruned_tree)
 

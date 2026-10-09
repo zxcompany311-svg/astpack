@@ -1,5 +1,6 @@
 """
 High-level code and file pruning engine.
+Integrates dependency graph resolution for surgical context extraction.
 """
 
 import os
@@ -14,9 +15,11 @@ def prune_code(
     filepath: str = "snippet.py",
     focus: Optional[List[str]] = None,
     mode: str = "focus",
+    depth: int = 1,
 ) -> Tuple[str, Dict]:
     """
     Prunes code text according to focus symbols or general stubbing.
+    Connects AST parsing with dependency graph call closure resolution.
     Returns: (pruned_code, stats_dict)
     """
     analyzer = get_analyzer(filepath)
@@ -31,9 +34,23 @@ def prune_code(
         }
 
     analysis = analyzer.parse(code, filepath)
-    focus_targets = set(focus or [])
+    primary_targets = set(focus or [])
+    dep_targets = set()
 
-    pruned_code = analyzer.prune(analysis, focus_targets=focus_targets, mode=mode)
+    # If focus targets specified, compute call closure via DependencyGraph
+    if primary_targets:
+        graph = DependencyGraph()
+        graph.add_file(analysis)
+        layers = graph.resolve_layers(primary_targets, max_depth=depth)
+        primary_targets = layers["primary"]
+        dep_targets = layers["dependencies"]
+
+    pruned_code = analyzer.prune(
+        analysis,
+        focus_targets=primary_targets,
+        dependency_targets=dep_targets,
+        mode=mode,
+    )
 
     orig_tok = estimate_tokens(code)
     prun_tok = estimate_tokens(pruned_code)
@@ -46,6 +63,8 @@ def prune_code(
         "reduction_pct": pct,
         "language": analysis.language,
         "symbols_found": len(analysis.symbols),
+        "primary_targets": list(primary_targets),
+        "dependency_targets": list(dep_targets),
     }
 
     return pruned_code, stats
@@ -55,6 +74,7 @@ def prune_file(
     filepath: str,
     focus: Optional[List[str]] = None,
     mode: str = "focus",
+    depth: int = 1,
 ) -> Tuple[str, Dict]:
     """
     Prunes a single file from disk.
@@ -65,4 +85,4 @@ def prune_file(
     with open(filepath, "r", encoding="utf-8", errors="replace") as f:
         code = f.read()
 
-    return prune_code(code, filepath=filepath, focus=focus, mode=mode)
+    return prune_code(code, filepath=filepath, focus=focus, mode=mode, depth=depth)
