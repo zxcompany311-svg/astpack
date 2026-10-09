@@ -1,0 +1,60 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "astpack"
+version = "0.1.0"
+description = "AST-aware semantic context pruner & dependency packing engine for AI coding agents."
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+authors = [
+    { name = "AstPack Contributors" }
+]
+keywords = [
+    "ai",
+    "llm",
+    "coding-agent",
+    "ast",
+    "context-window",
+    "token-reduction",
+    "prompt-engineering",
+    "repomix",
+    "tree-sitter"
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Code Generators",
+    "Topic :: Software Development :: Compilers",
+]
+dependencies = []
+
+[project.optional-dependencies]
+cli = [
+    "rich>=13.0.0",
+]
+polyglot = [
+    "tree-sitter>=0.21.0",
+    "tree-sitter-languages>=1.10.0",
+]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-cov>=4.0.0",
+]
+
+[project.scripts]
+astpack = "astpack.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/astpack/astpack"
+Repository = "https://github.com/astpack/astpack"
+Issues = "https://github.com/astpack/astpack/issues"
