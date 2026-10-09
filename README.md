@@ -41,7 +41,8 @@ When you ask Claude Code, Cursor, or ChatGPT to refactor a payment flow:
 ## ✨ Key Features
 
 - 🌳 **Lossless AST Decomposition**: Uses Python's native `ast` and tree-sitter semantics for valid, syntactically clean stub generation.
-- 🎯 **Focus Mode (`--focus`)**: Specify a target function or class (e.g. `checkout_service.py:process_payment`). AstPack automatically computes its 1-hop and 2-hop call graph dependencies, preserving target implementations while stubbing auxiliary code.
+- 🎯 **Focus Mode (`--focus`)**: Specify a target function or class (e.g. `checkout_service.py:process_payment`). AstPack automatically preserves target implementations while stubbing auxiliary code into type stubs.
+- 🔌 **Native Model Context Protocol (MCP)**: Run `astpack mcp` to connect AstPack directly to Claude Desktop, Cursor, or Cline as an autonomous context optimization tool.
 - 📦 **AI-Ready Markdown Bundles (`astpack pack`)**: Generates structured, fenced markdown files with project tree maps, token compression metrics, and file headers.
 - 🛡️ **Zero External Runtime Dependencies**: Blazing-fast out of the box using only the Python standard library. Optional `rich` integration for terminal aesthetics.
 - 🌐 **Polyglot Ready**: Built-in support for Python (`.py`), TypeScript (`.ts`, `.tsx`), and JavaScript (`.js`, `.jsx`).
@@ -94,18 +95,39 @@ astpack stats .
 Output:
 ```text
 --- Repository Token Footprint ---
-Files Processed: 48
-Original Tokens: 124,520
-Pruned Tokens:   28,140
-Saved Tokens:    96,380
-Token Reduction: 77.4%
+Files Processed: 19
+Original Tokens: 12,352
+Pruned Tokens:   5,281
+Saved Tokens:    7,071
+Token Reduction: 57.25%
 ```
+
+---
+
+## 🔌 Model Context Protocol (MCP) Setup
+
+You can equip Claude Desktop, Cursor, or Cline with AstPack directly.
+
+### Claude Desktop (`claude_desktop_config.json`)
+
+```json
+{
+  "mcpServers": {
+    "astpack": {
+      "command": "uvx",
+      "args": ["astpack", "mcp"]
+    }
+  }
+}
+```
+
+Now Claude can autonomously call `astpack_prune` and `astpack_pack` to prune huge codebases on the fly!
 
 ---
 
 ## 🐍 Python API
 
-You can also use AstPack programmatically inside your AI agents, LangChain/LlamaIndex tools, or MCP servers:
+You can also use AstPack programmatically inside your AI agents, LangChain/LlamaIndex tools, or custom pipelines:
 
 ```python
 from astpack import prune_code, pack_repository
@@ -148,6 +170,7 @@ Commands:
   pack      Pack repository into pruned AI markdown bundle
   prune     Prune a single file or snippet into stubs
   stats     Analyze repository token footprint and savings potential
+  mcp       Run Model Context Protocol (MCP) server over stdio
 
 Global Options:
   -v, --version   Show version

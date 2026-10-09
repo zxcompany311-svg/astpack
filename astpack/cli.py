@@ -99,6 +99,11 @@ def cmd_stats(args):
     _print_stats_table("Repository Token Footprint", res, is_pack=True)
 
 
+def cmd_mcp(args):
+    from astpack.mcp import run_mcp_server
+    run_mcp_server()
+
+
 def _print_stats_table(title: str, stats: dict, is_pack: bool = False):
     if HAS_RICH:
         table = Table(title=title, title_style="bold magenta", border_style="dim")
@@ -151,6 +156,9 @@ def main():
     p_stats = subparsers.add_parser("stats", help="Analyze repository token footprint and potential savings")
     p_stats.add_argument("path", nargs="?", default=".", help="Directory to analyze (default: .)")
 
+    # mcp command
+    p_mcp = subparsers.add_parser("mcp", help="Run Model Context Protocol (MCP) server over stdio")
+
     args = parser.parse_args()
 
     if not args.command:
@@ -164,6 +172,8 @@ def main():
         cmd_pack(args)
     elif args.command == "stats":
         cmd_stats(args)
+    elif args.command == "mcp":
+        cmd_mcp(args)
 
 
 if __name__ == "__main__":
