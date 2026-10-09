@@ -1,10 +1,6 @@
-"""
-Python AST Analyzer and Transformer.
-Uses native python standard library `ast` for parsing and lossless syntax stubbing.
-"""
-
+from __future__ import annotations
 import ast
-from typing import List, Optional, Set
+from typing import List, Optional, Set, Union
 from astpack.analyzer.base import (
     BaseAnalyzer,
     FileAnalysis,

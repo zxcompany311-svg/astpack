@@ -1,7 +1,4 @@
-"""
-Base types and interfaces for language AST analyzers.
-"""
-
+from __future__ import annotations
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import List, Optional, Set
